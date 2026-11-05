@@ -4,9 +4,10 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "strict": true,
+    "verbatimModuleSyntax": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node", "vitest/globals"]
   },
-  "include": ["playground"]
+  "include": ["src", "tests"]
 }

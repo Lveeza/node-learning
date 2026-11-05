@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest run",
+    "dev": "tsx watch --env-file=.env src/server.ts",
     "typecheck": "tsc"
   },
   "keywords": [],
