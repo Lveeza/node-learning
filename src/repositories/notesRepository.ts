@@ -2,32 +2,33 @@ import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import path from "node:path";
 import { NOTES_FILE as DATA_FILE } from "../config.js";
 import { db } from "../db.js";
+import type { Note } from "../types.js";
 
-const DATA_DIR = path.dirname(DATA_FILE);
+// const DATA_DIR = path.dirname(DATA_FILE);
 
-let queue = Promise.resolve();
+// let queue = Promise.resolve();
 
-function enqueue(task) {
-  const result = queue.then(task);
-  queue = result.catch(() => {});
-  return result;
-}
+// function enqueue(task) {
+//   const result = queue.then(task);
+//   queue = result.catch(() => {});
+//   return result;
+// }
 
-async function readNotes() {
-  try {
-    return JSON.parse(await readFile(DATA_FILE, "utf8"));
-  } catch (err) {
-    if (err.code === "ENOENT") return [];
-    throw err;
-  }
-}
+// async function readNotes() {
+//   try {
+//     return JSON.parse(await readFile(DATA_FILE, "utf8"));
+//   } catch (err) {
+//     if (err.code === "ENOENT") return [];
+//     throw err;
+//   }
+// }
 
-async function writeNotes(notes) {
-  await mkdir(DATA_DIR, { recursive: true });
-  const tmpFile = `${DATA_FILE}.tmp`;
-  await writeFile(tmpFile, JSON.stringify(notes, null, 2), "utf8");
-  await rename(tmpFile, DATA_FILE);
-}
+// async function writeNotes(notes) {
+//   await mkdir(DATA_DIR, { recursive: true });
+//   const tmpFile = `${DATA_FILE}.tmp`;
+//   await writeFile(tmpFile, JSON.stringify(notes, null, 2), "utf8");
+//   await rename(tmpFile, DATA_FILE);
+// }
 
 // export async function append(note) {
 //   return enqueue(async () => {
@@ -79,19 +80,26 @@ async function writeNotes(notes) {
 //   return note.find((note) => note.id === id);
 // }
 
-function toNote(row) {
-  if (!row) return null;
-  const note = { id: row.id, text: row.text, createdAt: row.created_at };
+type NoteRow = {
+  id: string;
+  text: string;
+  created_at: string;
+  updated_at: string | null;
+};
+
+function toNote(row: NoteRow): Note {
+  const note: Note = { id: row.id, text: row.text, createdAt: row.created_at };
   if (row.updated_at) note.updatedAt = row.updated_at;
   return note;
 }
 
-export async function findById(id) {
-  const row = db.prepare("SELECT * FROM notes WHERE id = ?").get(id);
-  return toNote(row);
+export async function findById(id: string): Promise<Note | null> {
+  const row = db.prepare("SELECT * FROM notes WHERE id = ?").get(id) as
+    NoteRow | undefined;
+  return row ? toNote(row) : null;
 }
 
-export async function append(note) {
+export async function append(note: Note): Promise<Note> {
   db.prepare("INSERT INTO notes (id, text, created_at) VALUES (?, ?, ?)").run(
     note.id,
     note.text,
@@ -103,16 +111,22 @@ export async function append(note) {
 export async function findAll() {
   const rows = db
     .prepare("SELECT * FROM notes ORDER BY created_at ASC, rowid ASC")
-    .all();
+    .all() as NoteRow[];
   return rows.map(toNote);
 }
 
-export async function remove(id) {
+export async function remove(id: string): Promise<Note | null> {
+  const row = db.prepare("SELECT * FROM notes WHERE id = ?").get(id) as
+    NoteRow | undefined;
+  if (!row) return null;
   const result = db.prepare("DELETE FROM notes WHERE id = ?").run(id);
-  return result.changes > 0;
+  return result.changes > 0 ? toNote(row) : null;;
 }
 
-export async function update(id, changes) {
+export async function update(
+  id: string,
+  changes: { text?: string },
+): Promise<Note | null> {
   const updatedAt = new Date().toISOString();
 
   const result = db
@@ -123,13 +137,23 @@ export async function update(id, changes) {
   return findById(id);
 }
 
-export async function findPage({ limit, offset, q }) {
+export async function findPage({
+  limit,
+  offset,
+  q,
+}: {
+  limit: number;
+  offset: number;
+  q?: string;
+}): Promise<{ items: Note[]; total: number }> {
   const where = q ? "WHERE text LIKE ? ESCAPE '\\'" : "";
-  const params = q ? [`%${escapeLike(q)}%`] : [];
+  const params: string[] = q ? [`%${escapeLike(q)}%`] : [];
 
-  const total = db
-    .prepare(`SELECT COUNT(*) AS count FROM notes ${where}`)
-    .get(...params).count;
+  const total = (
+    db
+      .prepare(`SELECT COUNT(*) AS count FROM notes ${where}`)
+      .get(...params) as { count: number }
+  ).count;
 
   const rows = db
     .prepare(
@@ -137,11 +161,11 @@ export async function findPage({ limit, offset, q }) {
        ORDER BY created_at ASC, rowid ASC
        LIMIT ? OFFSET ?`,
     )
-    .all(...params, limit, offset);
+    .all(...params, limit, offset) as NoteRow[];
 
   return { items: rows.map(toNote), total };
 }
 
-function escapeLike(s) {
+function escapeLike(s: string): string {
   return s.replace(/[\\%_]/g, "\\$&");
 }

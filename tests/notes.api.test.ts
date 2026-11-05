@@ -1,8 +1,9 @@
 import request from "supertest";
 import { randomUUID } from "node:crypto";
 
-let app;
-let db;
+let app: typeof import('../src/app.js').app;
+
+let db: typeof import('../src/db.js').db;
 
 beforeAll(async () => {
   process.env.DB_FILE = ":memory:";

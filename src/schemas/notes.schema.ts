@@ -1,4 +1,7 @@
 import { z } from "zod";
+export type CreateNoteInput = z.infer<typeof createNoteSchema>;   // { text: string }
+export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;   // { text?: string }
+export type ListQuery = z.infer<typeof listQuerySchema>;          // { limit: number;
 
 export const createNoteSchema = z.strictObject({
   text: z
