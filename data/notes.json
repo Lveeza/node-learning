@@ -1,0 +1,43 @@
+[
+  {
+    "id": "ca0d060e-096a-414e-b5bf-28427ff53eda",
+    "text": "hi",
+    "createdAt": "2026-11-02T15:10:59.225Z"
+  },
+  {
+    "id": "73ca4e8c-854d-4985-b7c7-0808b87d80d1",
+    "text": "hi updated",
+    "createdAt": "2026-11-02T15:12:29.963Z",
+    "updatedAt": "2026-11-02T19:08:23.792Z"
+  },
+  {
+    "id": "fcc8909a-86a7-4b04-a2f9-d16e88558c12",
+    "text": "Laveeza",
+    "createdAt": "2026-11-02T15:13:31.790Z"
+  },
+  {
+    "id": "395825d3-3b7b-48d0-99d0-a0798671c60f",
+    "text": "hi",
+    "createdAt": "2026-11-02T18:18:46.614Z"
+  },
+  {
+    "id": "49bcdd1d-5299-4897-84f8-7c722ecb8818",
+    "text": "hi there",
+    "createdAt": "2026-11-02T19:06:03.758Z"
+  },
+  {
+    "id": "f14cd1ff-7505-4e90-a625-cb819e3dd06c",
+    "text": "hi again",
+    "createdAt": "2026-11-02T19:06:51.922Z"
+  },
+  {
+    "id": "6a5f1167-28e0-4ec7-b5c5-6c8ab1a7ab75",
+    "text": "second note",
+    "createdAt": "2026-11-02T19:06:51.949Z"
+  },
+  {
+    "id": "34f68eb5-b9ab-4b6c-a076-5c95620575b5",
+    "text": "third note",
+    "createdAt": "2026-11-02T19:06:51.973Z"
+  }
+]
