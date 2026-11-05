@@ -13,7 +13,7 @@ export type ValidationIssue = { field: string; message: string };
 
 export class ValidationError extends AppError {
   details?: ValidationIssue[];
-  constructor(message: string, details: ValidationIssue[]) {
+  constructor(message: string, details?: ValidationIssue[]) {
     super(message, 400);
     this.details = details;
   }

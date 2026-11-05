@@ -3,7 +3,7 @@ import { PORT } from './config.js';
 
 const server = app.listen(PORT, () => console.log(`Listening on ${PORT}`));
 
-function shutdown(signal) {
+function shutdown(signal: string): void {
   console.log(`${signal} received. Closing server...`);
   server.close((err) => process.exit(err ? 1 : 0));
   setTimeout(() => process.exit(1), 10_000).unref(); 

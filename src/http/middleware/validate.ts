@@ -1,6 +1,10 @@
 import { ValidationError } from '../../errors.js';
+import type { Request, Response, NextFunction } from "express";
+import type { ZodType } from "zod";
 
-export const validate = (schema, source = 'body') => (req, res, next) => {
+type Source = "body" | "query" | "params";
+
+export const validate = (schema: ZodType, source: Source = "body") => (req: Request, _res: Response, next: NextFunction) => {
   const result = schema.safeParse(req[source]);
 
   if (!result.success) {
@@ -11,7 +15,7 @@ export const validate = (schema, source = 'body') => (req, res, next) => {
     return next(new ValidationError('Validation failed', details));
   }
 
-  req.valid ??= {};
+  req.valid ??= {} as Request["valid"];
   req.valid[source] = result.data; 
   next();
 

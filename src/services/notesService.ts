@@ -1,6 +1,5 @@
 import {
   append,
-  findAll,
   findById,
   remove,
   update,
@@ -9,10 +8,19 @@ import {
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import { ValidationError, NotFoundError } from "../errors.js";
+import type { Note, ListQuery } from "../types.js";
 
 export const notesEvents = new EventEmitter();
 
-export async function addNote(text) {
+function emitSafely(event: string, payload: Note): void {
+  try {
+    notesEvents.emit(event, payload);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+export async function addNote(text: unknown): Promise<Note> {
   if (typeof text !== "string" || text.trim() === "") {
     throw new ValidationError("Text must be a non-empty string");
   }
@@ -23,22 +31,23 @@ export async function addNote(text) {
     createdAt: new Date().toISOString(),
   };
   const saved = await append(note);
-
-  try {
-    notesEvents.emit("note:added", saved);
-  } catch (error) {
-    console.error(error);
-  }
-
+  emitSafely("note:added", saved);
   return saved;
 }
 
-export async function listNotes({ limit, offset, q }) {
+export async function listNotes({
+  limit,
+  offset,
+  q,
+}: ListQuery): Promise<{
+  data: Note[];
+  meta: { total: number; limit: number; offset: number };
+}> {
   const { items, total } = await findPage({ limit, offset, q });
   return { data: items, meta: { total, limit, offset } };
 }
 
-export async function getNote(id) {
+export async function getNote(id: string): Promise<Note> {
   const note = await findById(id);
 
   if (!note) {
@@ -47,12 +56,15 @@ export async function getNote(id) {
   return note;
 }
 
-export async function deleteNote(id) {
+export async function deleteNote(id: string): Promise<void> {
   const removed = await remove(id);
   if (!removed) throw new NotFoundError(`Note with id ${id} not found`);
 }
 
-export async function updateNote(id, changes) {
+export async function updateNote(
+  id: string,
+  changes: { text?: string },
+): Promise<Note> {
   const updated = await update(id, changes);
   if (!updated) throw new NotFoundError(`Note with id ${id} not found`);
 

@@ -1,15 +1,21 @@
 import { AppError } from "../errors.js";
+import type { Request, Response } from "express";
 
 const MAX_BODY_BYTES = 1_000_000;
 
-export function sendJson(res, status, body, headers = {}) {
+export function sendJson(
+  res: Response,
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {}
+): void {
   res.writeHead(status, { "Content-Type": "application/json", ...headers });
   res.end(JSON.stringify(body));
 }
 
-export function readJsonBody(req) {
+export function readJsonBody(req: Request): Promise<unknown> {
   return new Promise((resolve, reject) => {
-    const chunks = [];
+    const chunks: Buffer[] = [];
     let size = 0;
 
     req.on("data", (chunk) => {
@@ -40,7 +46,7 @@ export function readJsonBody(req) {
   });
 }
 
-export function sendNoContent(res) {
+export function sendNoContent(res: Response): void {
   res.writeHead(204);
   res.end();
 }

@@ -90,7 +90,10 @@ test("POST /notes keeps all notes when 20 requests run in parallel", async () =>
 
   const list = await request(app).get("/notes").query({ limit: 100 });
   expect(list.body.meta.total).toBe(20);
-  expect(list.body.data.map((n) => n.text).sort()).toEqual([...texts].sort());
+  expect(list.body.data.map((n: {text: string}) => n.text).sort()).toEqual([...texts].sort());
+//   expect(
+//   (list.body.data as { text: string }[]).map((n) => n.text).sort()
+// ).toEqual([...texts].sort());
 });
 
 test("GET /notes/:id returns 400 when id is not a valid UUID", async () => {
@@ -192,7 +195,7 @@ test("GET /notes paginates with limit and offset", async () => {
 
   expect(res.status).toBe(200);
   expect(res.body.data).toHaveLength(2);
-  expect(res.body.data.map((n) => n.text)).toEqual(["note 2", "note 3"]);
+  expect(res.body.data.map((n: {text: string}) => n.text)).toEqual(["note 2", "note 3"]);
   expect(res.body.meta).toMatchObject({ total: 3, limit: 2, offset: 1 });
 });
 
@@ -204,7 +207,7 @@ test("GET /notes?q= filters notes by search text", async () => {
   const res = await request(app).get("/notes").query({ q: "apple" });
 
   expect(res.status).toBe(200);
-  expect(res.body.data.map((n) => n.text).sort()).toEqual([
+  expect(res.body.data.map((n: {text: string}) => n.text).sort()).toEqual([
     "Apple juice",
     "apple pie",
   ]);
@@ -217,6 +220,6 @@ test("GET /notes?q=% treats % as a literal character", async () => {
 
   const res = await request(app).get("/notes").query({ q: "%" });
 
-  expect(res.body.data.map((n) => n.text)).toEqual(["100% done"]);
+  expect(res.body.data.map((n: { text: string }) => n.text)).toEqual(["100% done"]);
   expect(res.body.meta.total).toBe(1);
 });
