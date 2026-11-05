@@ -1,6 +1,7 @@
 // src/errors.js
 export class AppError extends Error {
   status: number;
+  details?: unknown;
   constructor(message : string, status = 500, options?: ErrorOptions) {
     super(message, options);
     this.name = this.constructor.name;
