@@ -68,11 +68,7 @@ export async function updateNote(
   const updated = await update(id, changes);
   if (!updated) throw new NotFoundError(`Note with id ${id} not found`);
 
-  try {
-    notesEvents.emit("note:updated", updated);
-  } catch (error) {
-    console.error(error);
-  }
+  emitSafely("note:updated", updated);
 
   return updated;
 }
