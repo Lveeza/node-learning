@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch --env-file=.env src/server.ts",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node --env-file=.env dist/server.js"
   },
   "keywords": [],
   "author": "",
