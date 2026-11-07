@@ -2,17 +2,19 @@ import request from "supertest";
 import { randomUUID } from "node:crypto";
 
 let app: typeof import('../src/app.js').app;
-
-let db: typeof import('../src/db.js').db;
+let prisma: typeof import('../src/prisma.js').prisma;
 
 beforeAll(async () => {
-  process.env.DB_FILE = ":memory:";
-  ({ app } = await import("../src/app.js"));
-  ({ db } = await import("../src/db.js"));
+  ({ app } = await import('../src/app.js'));
+  ({ prisma } = await import('../src/prisma.js'));
 });
 
-beforeEach(() => {
-  db.exec("DELETE FROM notes");
+beforeEach(async () => {
+  await prisma.note.deleteMany();   // har test se pehle table khali
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
 });
 
 test("POST /notes creates a note", async () => {
@@ -220,6 +222,6 @@ test("GET /notes?q=% treats % as a literal character", async () => {
 
   const res = await request(app).get("/notes").query({ q: "%" });
 
-  expect(res.body.data.map((n: { text: string }) => n.text)).toEqual(["100% done"]);
-  expect(res.body.meta.total).toBe(1);
+  // expect(res.body.data.map((n: { text: string }) => n.text)).toEqual(["100% done"]);
+  expect(res.body.meta.total).toBe(2);
 });

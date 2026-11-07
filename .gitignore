@@ -1,5 +1,4 @@
 .env
-data/*.db*
 node_modules
 dist
 /src/generated/prisma
@@ -7,3 +6,4 @@ dist
 .claude 
 .windsurf 
 skills-lock.json
+*.db
