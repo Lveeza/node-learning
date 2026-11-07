@@ -2,3 +2,8 @@
 data/*.db*
 node_modules
 dist
+/src/generated/prisma
+.agents 
+.claude 
+.windsurf 
+skills-lock.json
