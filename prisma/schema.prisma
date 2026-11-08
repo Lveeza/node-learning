@@ -13,3 +13,10 @@ model Note {
   createdAt DateTime
   updatedAt DateTime?
 }
+
+model User {
+  id           String   @id
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}

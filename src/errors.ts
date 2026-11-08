@@ -2,7 +2,7 @@
 export class AppError extends Error {
   status: number;
   details?: unknown;
-  constructor(message : string, status = 500, options?: ErrorOptions) {
+  constructor(message: string, status = 500, options?: ErrorOptions) {
     super(message, options);
     this.name = this.constructor.name;
     this.status = status;
@@ -19,9 +19,19 @@ export class ValidationError extends AppError {
   }
 }
 
-
 export class NotFoundError extends AppError {
   constructor(message = "Resource not found") {
     super(message, 404);
+  }
+}
+
+export class ConflictError extends AppError {
+  constructor(message = "Resource already exists") {
+    super(message, 409);
+  }
+}
+export class UnauthorizedError extends AppError {
+  constructor(message = "Authentication required") {
+    super(message, 401);
   }
 }

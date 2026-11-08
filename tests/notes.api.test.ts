@@ -225,3 +225,32 @@ test("GET /notes?q=% treats % as a literal character", async () => {
   // expect(res.body.data.map((n: { text: string }) => n.text)).toEqual(["100% done"]);
   expect(res.body.meta.total).toBe(2);
 });
+
+test("POST /register creates user", async() => {
+    const res = await request(app).post("/auth/register").send({ email: "Ali@Example.com", password: "password" });
+    expect(res.status).toBe(201);
+    expect(res.body.email).toBe('ali@example.com');
+    expect(res.body).not.toHaveProperty('passwordHash');
+    expect(res.body).not.toHaveProperty('password');
+});
+
+test("POST /register fails with duplicate email", async() => {
+  const body = { email: 'ali@example.com', password: 'secret123' };
+    await request(app).post("/auth/register").send({ email: "ali@example.com", password: "password" });
+    const res = await request(app).post('/auth/register').send(body);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe("Email already registered");
+});
+
+test.each([
+  [{ email: 'abc', password: 'secret123' }, 'email'],
+  [{ email: 'ali@example.com', password: '123' }, 'password'],
+  [{ email: 'ali@example.com' }, 'password'],
+  [{ email: 'ali@example.com', password: 'secret123', name: 'John' }, 'body'],
+])('POST /auth/register rejects %j', async (payload, field) => {
+  const res = await request(app).post('/auth/register').send(payload);
+
+  expect(res.status).toBe(400);
+  expect(res.body.details.map((d: { field: string }) => d.field)).toContain(field);
+});

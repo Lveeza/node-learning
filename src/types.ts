@@ -4,3 +4,4 @@ export interface ListQuery {
   offset: number;
   q?: string;
 }
+export type UserRecord = { id: string; email: string; passwordHash: string };
