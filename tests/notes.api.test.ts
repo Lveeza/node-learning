@@ -10,7 +10,9 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await prisma.note.deleteMany();   // har test se pehle table khali
+  await prisma.note.deleteMany();   // notes first
+  await prisma.user.deleteMany();
+  api = authed(await registerAndLogin('ali@example.com'));
 });
 
 afterAll(async () => {
@@ -45,7 +47,7 @@ test("GET /notes returns all notes", async () => {
 test("DELETE /notes/:id delete a note", async () => {
   const createRes = await api.post("/notes").send({ text: "first" });
 
-  const res = await request(app).delete(`/notes/${createRes.body.id}`);
+  const res = await api.delete(`/notes/${createRes.body.id}`);
 
   expect(res.status).toBe(204);
   expect(res.text).toBe("");
@@ -55,13 +57,13 @@ test("DELETE /notes/:id delete a note", async () => {
 });
 
 test("DELETE /notes/:id return 404 for missing note", async () => {
-  const res = await request(app).delete(`/notes/${randomUUID()}`);
+  const res = await api.delete(`/notes/${randomUUID()}`);
 
   expect(res.status).toBe(404);
 });
 
 test("POST /notes invalid json", async () => {
-  const res = await request(app)
+  const res = await api
     .post("/notes")
     .set("Content-Type", "application/json")
     .send('{ text: "hello" ');
@@ -107,11 +109,11 @@ test("GET /notes/:id returns 400 when id is not a valid UUID", async () => {
 });
 
 test("PATCH /notes/:id updates the note text", async () => {
-  const createRes = await request(app)
+  const createRes = await api
     .post("/notes")
     .send({ text: "original" });
 
-  const updateRes = await request(app)
+  const updateRes = await api
     .patch(`/notes/${createRes.body.id}`)
     .send({ text: "updated" });
 
@@ -122,7 +124,7 @@ test("PATCH /notes/:id updates the note text", async () => {
 });
 
 test("PATCH /notes/:id returns 404 for a missing note", async () => {
-  const res = await request(app)
+  const res = await api
     .patch(`/notes/${randomUUID()}`)
     .send({ text: "updated" });
 
@@ -130,11 +132,11 @@ test("PATCH /notes/:id returns 404 for a missing note", async () => {
 });
 
 test("PATCH /notes empty text", async () => {
-  const createRes = await request(app)
+  const createRes = await api
     .post("/notes")
     .send({ text: "original" });
 
-  const updateRes = await request(app)
+  const updateRes = await api
     .patch(`/notes/${createRes.body.id}`)
     .send({ text: "" });
 
@@ -146,11 +148,11 @@ test("PATCH /notes empty text", async () => {
 });
 
 test("PATCH /notes/:id returns 400 for an empty body", async () => {
-  const createRes = await request(app)
+  const createRes = await api
     .post("/notes")
     .send({ text: "original" });
 
-  const res = await request(app).patch(`/notes/${createRes.body.id}`).send({});
+  const res = await api.patch(`/notes/${createRes.body.id}`).send({});
 
   expect(res.status).toBe(400);
   expect(res.body.error).toBe("Validation failed");
@@ -158,7 +160,7 @@ test("PATCH /notes/:id returns 400 for an empty body", async () => {
 });
 
 test("POST /notes extra feild", async () => {
-  const res = await request(app)
+  const res = await api
     .post("/notes")
     .send({ text: "hello", hack: true });
 
@@ -170,7 +172,7 @@ test("POST /notes extra feild", async () => {
 });
 
 test("POST /notes rejects text longer than 500 characters", async () => {
-  const res = await request(app)
+  const res = await api
     .post("/notes")
     .send({ text: "a".repeat(501) });
 
@@ -180,7 +182,7 @@ test("POST /notes rejects text longer than 500 characters", async () => {
 });
 
 test("POST /notes accepts text of exactly 500 characters", async () => {
-  const res = await request(app)
+  const res = await api
     .post("/notes")
     .send({ text: "a".repeat(500) });
 
@@ -226,21 +228,19 @@ test("GET /notes?q=% treats % as a literal character", async () => {
   expect(res.body.meta.total).toBe(2);
 });
 
-test("POST /register creates user", async() => {
-    const res = await request(app).post("/auth/register").send({ email: "Ali@Example.com", password: "password" });
-    expect(res.status).toBe(201);
-    expect(res.body.email).toBe('ali@example.com');
-    expect(res.body).not.toHaveProperty('passwordHash');
-    expect(res.body).not.toHaveProperty('password');
+test('POST /auth/register creates a user', async () => {
+  const res = await request(app).post('/auth/register').send({ email: 'New@Example.com', password: 'secret123' });
+  expect(res.status).toBe(201);
+  expect(res.body.email).toBe('new@example.com');
+  expect(res.body).not.toHaveProperty('passwordHash');
 });
 
-test("POST /register fails with duplicate email", async() => {
-  const body = { email: 'ali@example.com', password: 'secret123' };
-    await request(app).post("/auth/register").send({ email: "ali@example.com", password: "password" });
-    const res = await request(app).post('/auth/register').send(body);
-
-    expect(res.status).toBe(409);
-    expect(res.body.error).toBe("Email already registered");
+test('POST /auth/register rejects a duplicate email', async () => {
+  const body = { email: 'dup@example.com', password: 'secret123' };
+  expect((await request(app).post('/auth/register').send(body)).status).toBe(201);
+  const res = await request(app).post('/auth/register').send(body);
+  expect(res.status).toBe(409);
+  expect(res.body.error).toBe('Email already registered');
 });
 
 test.each([
@@ -256,7 +256,7 @@ test.each([
 });
 
 const authed = (token: string) => ({
-  get: (url: string) => api.get(url).set('Authorization', `Bearer ${token}`),
+  get: (url: string) => request(app).get(url).set('Authorization', `Bearer ${token}`),
   post: (url: string) => request(app).post(url).set('Authorization', `Bearer ${token}`),
   patch: (url: string) => request(app).patch(url).set('Authorization', `Bearer ${token}`),
   delete: (url: string) => request(app).delete(url).set('Authorization', `Bearer ${token}`),
@@ -269,9 +269,3 @@ async function registerAndLogin(email: string): Promise<string> {
 }
 
 let api: ReturnType<typeof authed>;
-
-beforeEach(async () => {
-  await prisma.note.deleteMany();
-  await prisma.user.deleteMany();
-  api = authed(await registerAndLogin('ali@example.com'));
-});

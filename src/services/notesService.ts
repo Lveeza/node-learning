@@ -20,7 +20,7 @@ function emitSafely(event: string, payload: Note): void {
   }
 }
 
-export async function addNote(text: unknown): Promise<Note> {
+export async function addNote(text: unknown , ownerId : string): Promise<Note> {
   if (typeof text !== "string" || text.trim() === "") {
     throw new ValidationError("Text must be a non-empty string");
   }
@@ -30,7 +30,7 @@ export async function addNote(text: unknown): Promise<Note> {
     text: text.trim(),
     createdAt: new Date().toISOString(),
   };
-  const saved = await append(note);
+  const saved = await append(note , ownerId);
   emitSafely("note:added", saved);
   return saved;
 }
@@ -39,16 +39,17 @@ export async function listNotes({
   limit,
   offset,
   q,
+  ownerId
 }: ListQuery): Promise<{
   data: Note[];
   meta: { total: number; limit: number; offset: number };
 }> {
-  const { items, total } = await findPage({ limit, offset, q });
+  const { items, total } = await findPage({ limit, offset, q , ownerId});
   return { data: items, meta: { total, limit, offset } };
 }
 
-export async function getNote(id: string): Promise<Note> {
-  const note = await findById(id);
+export async function getNote(id: string , ownerId: string): Promise<Note> {
+  const note = await findById(id , ownerId);
 
   if (!note) {
     throw new NotFoundError(`Note with id ${id} not found`);
@@ -56,16 +57,17 @@ export async function getNote(id: string): Promise<Note> {
   return note;
 }
 
-export async function deleteNote(id: string): Promise<void> {
-  const removed = await remove(id);
+export async function deleteNote(id: string , ownerId: string): Promise<void> {
+  const removed = await remove(id , ownerId);
   if (!removed) throw new NotFoundError(`Note with id ${id} not found`);
 }
 
 export async function updateNote(
   id: string,
   changes: { text?: string },
+  ownerId: string,
 ): Promise<Note> {
-  const updated = await update(id, changes);
+  const updated = await update(id, changes , ownerId);
   if (!updated) throw new NotFoundError(`Note with id ${id} not found`);
 
   emitSafely("note:updated", updated);
