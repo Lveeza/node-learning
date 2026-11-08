@@ -3,6 +3,7 @@ declare global {
     interface Request {
       id: string;
       valid: { body?: unknown; params?: unknown; query?: unknown };
+      userId?: string;
     }
   }
 }

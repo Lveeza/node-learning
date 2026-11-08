@@ -12,6 +12,10 @@ model Note {
   text      String
   createdAt DateTime
   updatedAt DateTime?
+  ownerId   String
+  owner     User      @relation(fields: [ownerId], references: [id])
+
+  @@index([ownerId])
 }
 
 model User {

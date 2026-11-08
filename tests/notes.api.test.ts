@@ -18,7 +18,7 @@ afterAll(async () => {
 });
 
 test("POST /notes creates a note", async () => {
-  const res = await request(app).post("/notes").send({ text: "hello" });
+  const res = await api.post("/notes").send({ text: "hello" });
 
   expect(res.status).toBe(201);
   expect(res.body).toMatchObject({ text: "hello" });
@@ -26,16 +26,16 @@ test("POST /notes creates a note", async () => {
 });
 
 test("GET /notes/:id returns 404 for a missing note", async () => {
-  const res = await request(app).get(`/notes/${randomUUID()}`);
+  const res = await api.get(`/notes/${randomUUID()}`);
 
   expect(res.status).toBe(404);
 });
 
 test("GET /notes returns all notes", async () => {
-  await request(app).post("/notes").send({ text: "first" });
-  await request(app).post("/notes").send({ text: "second" });
+  await api.post("/notes").send({ text: "first" });
+  await api.post("/notes").send({ text: "second" });
 
-  const res = await request(app).get("/notes");
+  const res = await api.get("/notes");
 
   expect(res.status).toBe(200);
   expect(Array.isArray(res.body.data)).toBe(true);
@@ -43,14 +43,14 @@ test("GET /notes returns all notes", async () => {
 });
 
 test("DELETE /notes/:id delete a note", async () => {
-  const createRes = await request(app).post("/notes").send({ text: "first" });
+  const createRes = await api.post("/notes").send({ text: "first" });
 
   const res = await request(app).delete(`/notes/${createRes.body.id}`);
 
   expect(res.status).toBe(204);
   expect(res.text).toBe("");
 
-  const getRes = await request(app).get(`/notes/${createRes.body.id}`);
+  const getRes = await api.get(`/notes/${createRes.body.id}`);
   expect(getRes.status).toBe(404);
 });
 
@@ -71,7 +71,7 @@ test("POST /notes invalid json", async () => {
 });
 
 test("POST /notes empty text", async () => {
-  const res = await request(app).post("/notes").send({ text: "" });
+  const res = await api.post("/notes").send({ text: "" });
 
   expect(res.status).toBe(400);
   expect(res.body.error).toBe("Validation failed");
@@ -84,13 +84,13 @@ test("POST /notes keeps all notes when 20 requests run in parallel", async () =>
   const texts = Array.from({ length: 20 }, (_, i) => `note ${i + 1}`);
 
   const responses = await Promise.all(
-    texts.map((text) => request(app).post("/notes").send({ text })),
+    texts.map((text) => api.post("/notes").send({ text })),
   );
 
   expect(responses.map((r) => r.status)).toEqual(Array(20).fill(201));
   expect(new Set(responses.map((r) => r.body.id)).size).toBe(20);
 
-  const list = await request(app).get("/notes").query({ limit: 100 });
+  const list = await api.get("/notes").query({ limit: 100 });
   expect(list.body.meta.total).toBe(20);
   expect(list.body.data.map((n: {text: string}) => n.text).sort()).toEqual([...texts].sort());
 //   expect(
@@ -99,7 +99,7 @@ test("POST /notes keeps all notes when 20 requests run in parallel", async () =>
 });
 
 test("GET /notes/:id returns 400 when id is not a valid UUID", async () => {
-  const res = await request(app).get("/notes/not-a-uuid");
+  const res = await api.get("/notes/not-a-uuid");
 
   expect(res.status).toBe(400);
   expect(res.body.error).toBe("Validation failed");
@@ -190,10 +190,10 @@ test("POST /notes accepts text of exactly 500 characters", async () => {
 
 test("GET /notes paginates with limit and offset", async () => {
   for (const text of ["note 1", "note 2", "note 3"]) {
-    await request(app).post("/notes").send({ text });
+    await api.post("/notes").send({ text });
   }
 
-  const res = await request(app).get("/notes").query({ limit: 2, offset: 1 });
+  const res = await api.get("/notes").query({ limit: 2, offset: 1 });
 
   expect(res.status).toBe(200);
   expect(res.body.data).toHaveLength(2);
@@ -203,10 +203,10 @@ test("GET /notes paginates with limit and offset", async () => {
 
 test("GET /notes?q= filters notes by search text", async () => {
   for (const text of ["apple pie", "banana", "Apple juice"]) {
-    await request(app).post("/notes").send({ text });
+    await api.post("/notes").send({ text });
   }
 
-  const res = await request(app).get("/notes").query({ q: "apple" });
+  const res = await api.get("/notes").query({ q: "apple" });
 
   expect(res.status).toBe(200);
   expect(res.body.data.map((n: {text: string}) => n.text).sort()).toEqual([
@@ -217,10 +217,10 @@ test("GET /notes?q= filters notes by search text", async () => {
 });
 
 test("GET /notes?q=% treats % as a literal character", async () => {
-  await request(app).post("/notes").send({ text: "100% done" });
-  await request(app).post("/notes").send({ text: "plain note" });
+  await api.post("/notes").send({ text: "100% done" });
+  await api.post("/notes").send({ text: "plain note" });
 
-  const res = await request(app).get("/notes").query({ q: "%" });
+  const res = await api.get("/notes").query({ q: "%" });
 
   // expect(res.body.data.map((n: { text: string }) => n.text)).toEqual(["100% done"]);
   expect(res.body.meta.total).toBe(2);
@@ -253,4 +253,25 @@ test.each([
 
   expect(res.status).toBe(400);
   expect(res.body.details.map((d: { field: string }) => d.field)).toContain(field);
+});
+
+const authed = (token: string) => ({
+  get: (url: string) => api.get(url).set('Authorization', `Bearer ${token}`),
+  post: (url: string) => request(app).post(url).set('Authorization', `Bearer ${token}`),
+  patch: (url: string) => request(app).patch(url).set('Authorization', `Bearer ${token}`),
+  delete: (url: string) => request(app).delete(url).set('Authorization', `Bearer ${token}`),
+});
+
+async function registerAndLogin(email: string): Promise<string> {
+  await request(app).post('/auth/register').send({ email, password: 'secret123' });
+  const res = await request(app).post('/auth/login').send({ email, password: 'secret123' });
+  return res.body.token as string;
+}
+
+let api: ReturnType<typeof authed>;
+
+beforeEach(async () => {
+  await prisma.note.deleteMany();
+  await prisma.user.deleteMany();
+  api = authed(await registerAndLogin('ali@example.com'));
 });

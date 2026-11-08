@@ -19,3 +19,4 @@ export async function findByEmail(email: string): Promise<UserRecord | null> {
   const row = await prisma.user.findUnique({ where: { email } });
   return row ? { id: row.id, email: row.email, passwordHash: row.passwordHash } : null;
 }
+

@@ -6,6 +6,7 @@ import { NotFoundError } from './errors.js';
 import { errorHandler } from './http/errorHandler.js';
 import {requestId} from './http/middleware/requestId.js';
 import { logger } from './http/middleware/logger.js';
+import { authenticate } from './http/middleware/authenticate.js';
 
 
 export const app = express();
@@ -14,7 +15,7 @@ app.use(requestId);
 app.use(logger);
 app.use(helmet());                          
 app.use(express.json({ limit: '100kb' }));
-app.use('/notes', notesRouter);
+app.use('/notes', authenticate, notesRouter);
 app.use('/auth', authRouter);
 
 app.use((req, res, next) => next(new NotFoundError('Route not found')));
