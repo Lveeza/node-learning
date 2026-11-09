@@ -1,5 +1,11 @@
 import request from "supertest";
 import { randomUUID } from "node:crypto";
+import express from 'express';
+import { createRateLimiter } from '../src/http/middleware/rateLimit.js';
+import { errorHandler } from '../src/http/errorHandler.js';
+import { parseEnv } from '../src/config.js';
+
+const goodSecret = 'x'.repeat(32);
 
 let app: typeof import('../src/app.js').app;
 let prisma: typeof import('../src/prisma.js').prisma;
@@ -269,3 +275,86 @@ async function registerAndLogin(email: string): Promise<string> {
 }
 
 let api: ReturnType<typeof authed>;
+
+test('rate limiter returns 429 after the limit', async () => {
+  const mini = express();
+  mini.use(createRateLimiter({ windowMs: 60_000, limit: 3 }));
+  mini.get('/ping', (_req, res) => res.json({ ok: true }));
+  mini.use(errorHandler);
+
+  const statuses: number[] = [];
+  for (let i = 0; i < 5; i++) {
+    statuses.push((await request(mini).get('/ping')).status);
+  }
+
+  expect(statuses).toEqual([200, 200, 200, 429, 429]);
+});
+
+test('CORS allows only listed origins', async () => {
+  const ok = await request(app).get('/nothing').set('Origin', 'http://localhost:5173');
+  expect(ok.headers['access-control-allow-origin']).toBe('http://localhost:5173');
+
+  const bad = await request(app).get('/nothing').set('Origin', 'https://evil.example');
+  expect(bad.headers['access-control-allow-origin']).toBeUndefined();
+});
+
+test('login returns a token for correct credentials', async () => {
+  await request(app).post('/auth/register').send({ email: 'sam@example.com', password: 'secret123' });
+  const res = await request(app).post('/auth/login').send({ email: 'sam@example.com', password: 'secret123' });
+
+  expect(res.status).toBe(200);
+  expect(res.body.token).toEqual(expect.any(String));
+});
+
+test('login gives the same 401 for a wrong password and an unknown email', async () => {
+  await request(app).post('/auth/register').send({ email: 'sam@example.com', password: 'secret123' });
+
+  const wrongPassword = await request(app).post('/auth/login').send({ email: 'sam@example.com', password: 'nope-nope' });
+  const unknownEmail = await request(app).post('/auth/login').send({ email: 'nobody@example.com', password: 'nope-nope' });
+
+  expect(wrongPassword.status).toBe(401);
+  expect(unknownEmail.status).toBe(401);
+  expect(unknownEmail.body).toEqual(wrongPassword.body);
+});
+
+test('/notes needs a valid token', async () => {
+  expect((await request(app).get('/notes')).status).toBe(401);
+
+  const token = await registerAndLogin('carol@example.com');
+  expect((await authed(`${token}x`).get('/notes')).status).toBe(401); // tampered token
+});
+
+test("a user cannot read, change or delete another user's note", async () => {
+  const bob = authed(await registerAndLogin('bob@example.com'));
+  const created = await api.post('/notes').send({ text: 'private' });
+  const id = created.body.id;
+
+  expect((await bob.get(`/notes/${id}`)).status).toBe(404);
+  expect((await bob.patch(`/notes/${id}`).send({ text: 'hacked' })).status).toBe(404);
+  expect((await bob.delete(`/notes/${id}`)).status).toBe(404);
+  expect((await bob.get('/notes')).body.data).toHaveLength(0);
+
+  const still = await api.get(`/notes/${id}`);
+  expect(still.status).toBe(200);
+  expect(still.body.text).toBe('private');
+});
+
+
+
+test.each([
+  [{ JWT_SECRET: 'short' }],
+  [{ JWT_SECRET: goodSecret, PORT: 'abc' }],
+  [{ JWT_SECRET: goodSecret, PORT: '70000' }],
+  [{ JWT_SECRET: goodSecret, AUTH_RATE_LIMIT: '0' }],
+])('parseEnv rejects %j', (env) => {
+  expect(parseEnv(env).success).toBe(false);
+});
+
+test('parseEnv applies defaults and splits CORS_ORIGINS', () => {
+  const result = parseEnv({ JWT_SECRET: goodSecret, CORS_ORIGINS: 'http://a.com, http://b.com' });
+  expect(result.success).toBe(true);
+  if (result.success) {
+    expect(result.data.PORT).toBe(3000);
+    expect(result.data.CORS_ORIGINS).toEqual(['http://a.com', 'http://b.com']);
+  }
+});

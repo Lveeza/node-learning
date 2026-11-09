@@ -1,12 +1,31 @@
-const PORT = Number(process.env.PORT ?? 3000);
+// src/config.ts
+import { z } from 'zod';
 
-if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) {
-  throw new Error("PORT must be an integer between 1 and 65535");
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3000),
+  JWT_SECRET: z.string().min(32, 'must be at least 32 characters'),
+  CORS_ORIGINS: z.string().default('')
+    .transform((v) => v.split(',').map((s) => s.trim()).filter(Boolean)),
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+  API_RATE_LIMIT: z.coerce.number().int().positive().default(100),
+  AUTH_RATE_LIMIT: z.coerce.number().int().positive().default(10),
+});
+
+export function parseEnv(source: NodeJS.ProcessEnv) {
+  return envSchema.safeParse(source);
 }
 
-export { PORT };
+const parsed = parseEnv(process.env);
 
-const JWT_SECRET = process.env.JWT_SECRET ?? '';
-if (JWT_SECRET.length < 32) throw new Error('JWT_SECRET must be at least 32 characters');
+if (!parsed.success) {
+  console.error('Invalid environment configuration:');
+  for (const issue of parsed.error.issues) {
+    console.error(` - ${issue.path.join('.')}: ${issue.message}`);  // never print the values
+  }
+  process.exit(1);
+}
 
-export { JWT_SECRET };
+export const {
+  NODE_ENV, PORT, JWT_SECRET, CORS_ORIGINS, TRUST_PROXY, API_RATE_LIMIT, AUTH_RATE_LIMIT,
+} = parsed.data;
