@@ -1,18 +1,25 @@
 import { app } from './app.js';
 import { PORT } from './config.js';
+import { logger } from './logger.js';
+import { prisma } from './prisma.js';
 
-const server = app.listen(PORT, () => console.log(`Listening on ${PORT}`));
+const server = app.listen(PORT, () => logger.info({ port: PORT }, 'server listening'));
 
 function shutdown(signal: string): void {
-  console.log(`${signal} received. Closing server...`);
-  server.close((err) => process.exit(err ? 1 : 0));
-  setTimeout(() => process.exit(1), 10_000).unref(); 
+  logger.info({ signal }, 'shutting down');
+  setTimeout(() => {
+    logger.error('forced shutdown');
+    process.exit(1);
+  }, 10_000).unref();
+
+  server.close((err) => {
+    prisma.$disconnect().finally(() => process.exit(err ? 1 : 0));
+  });
 }
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
-
-process.on("unhandledRejection", (reason) => {
-  console.error("Unhandled rejection:", reason);
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('unhandledRejection', (reason) => {
+  logger.fatal({ err: reason }, 'unhandled rejection');
   process.exit(1);
 });

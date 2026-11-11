@@ -11,6 +11,7 @@ export default defineConfig({
       API_RATE_LIMIT: "100000",
       AUTH_RATE_LIMIT: "100000",
       CORS_ORIGINS: "http://localhost:5173",
+      LOG_LEVEL: "silent",
     },
     globalSetup: ["./tests/global-setup.ts"],
   },

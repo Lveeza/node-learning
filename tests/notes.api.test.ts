@@ -5,6 +5,9 @@ import { createRateLimiter } from '../src/http/middleware/rateLimit.js';
 import { errorHandler } from '../src/http/errorHandler.js';
 import { parseEnv } from '../src/config.js';
 
+import { Writable } from 'node:stream';
+import { createLogger } from '../src/logger.js';
+
 const goodSecret = 'x'.repeat(32);
 
 let app: typeof import('../src/app.js').app;
@@ -357,4 +360,32 @@ test('parseEnv applies defaults and splits CORS_ORIGINS', () => {
     expect(result.data.PORT).toBe(3000);
     expect(result.data.CORS_ORIGINS).toEqual(['http://a.com', 'http://b.com']);
   }
+});
+
+
+test('GET /health works without a token', async () => {
+  const res = await request(app).get('/health');
+  expect(res.status).toBe(200);
+  expect(res.body.status).toBe('ok');
+});
+
+test('GET /ready checks the database', async () => {
+  const res = await request(app).get('/ready');
+  expect(res.status).toBe(200);
+  expect(res.body).toEqual({ status: 'ready' });
+});
+
+test('logger hides secrets', () => {
+  const lines: string[] = [];
+  const sink = new Writable({
+    write(chunk, _enc, cb) { lines.push(chunk.toString()); cb(); },
+  });
+  const log = createLogger(sink, 'info');
+
+  log.info({ req: { headers: { authorization: 'Bearer SECRET-TOKEN' } }, password: 'hunter2' }, 'test');
+
+  const output = lines.join('');
+  expect(output).not.toContain('SECRET-TOKEN');
+  expect(output).not.toContain('hunter2');
+  expect(output).toContain('[redacted]');
 });

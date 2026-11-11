@@ -10,6 +10,7 @@ const envSchema = z.object({
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   API_RATE_LIMIT: z.coerce.number().int().positive().default(100),
   AUTH_RATE_LIMIT: z.coerce.number().int().positive().default(10),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 });
 
 export function parseEnv(source: NodeJS.ProcessEnv) {
@@ -27,5 +28,5 @@ if (!parsed.success) {
 }
 
 export const {
-  NODE_ENV, PORT, JWT_SECRET, CORS_ORIGINS, TRUST_PROXY, API_RATE_LIMIT, AUTH_RATE_LIMIT,
+  NODE_ENV, PORT, JWT_SECRET, CORS_ORIGINS, TRUST_PROXY, API_RATE_LIMIT, AUTH_RATE_LIMIT,LOG_LEVEL
 } = parsed.data;
