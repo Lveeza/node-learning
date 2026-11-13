@@ -302,7 +302,8 @@ test('CORS allows only listed origins', async () => {
 });
 
 test('login returns a token for correct credentials', async () => {
-  await request(app).post('/auth/register').send({ email: 'sam@example.com', password: 'secret123' });
+  const reg = await request(app).post('/auth/register').send({ email: 'sam@example.com', password: 'secret123' });
+  expect(reg.status).toBe(201)
   const res = await request(app).post('/auth/login').send({ email: 'sam@example.com', password: 'secret123' });
 
   expect(res.status).toBe(200);
@@ -388,4 +389,9 @@ test('logger hides secrets', () => {
   expect(output).not.toContain('SECRET-TOKEN');
   expect(output).not.toContain('hunter2');
   expect(output).toContain('[redacted]');
+});
+
+test('parseEnv accepts a valid env and applies defaults', () => {
+  const result = parseEnv({ JWT_SECRET: goodSecret });
+  expect(result.success).toBe(true);
 });
